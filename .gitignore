@@ -1,0 +1,10 @@
+# Compiled objects and executables
+*.o
+fft_sim
+
+# Simulation results
+*.csv
+
+# Temporary or IDE files (optional but common)
+.DS_Store
+.vscode/
