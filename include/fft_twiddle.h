@@ -3,7 +3,7 @@
 
 #include "fft_config.h"
 
-#define MAX_FFT_SIZE 1024
+#define MAX_FFT_SIZE 4096
 
 /* Pre-computed twiddle factors (sin/cos tables) */
 extern float32_t twiddle_sin_f32[MAX_FFT_SIZE];

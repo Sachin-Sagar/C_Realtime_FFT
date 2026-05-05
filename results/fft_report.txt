@@ -1,0 +1,16 @@
+====================================================
+        ZERO PADDING AND INTERPOLATION REPORT
+====================================================
+
+Observation 1: The 'Digital Zoom' Effect
+----------------------------------------
+Signal: 50.0 Hz and 52.5 Hz (Difference = 2.5 Hz)
+At Fs=1000Hz, N=512, Resolution = 1.95 Hz.
+
+- Red Line (Normal N=512): The spectrum is 'jagged'. The two peaks are merged into one flat-top blob.
+- Blue Line (Padded N=2048): The spectrum is 'smooth'. It looks like it has higher resolution,
+  BUT notice that it still shows ONE merged peak. Zero-padding DID NOT separate the frequencies.
+
+Conclusion for Hardware (STM32):
+Zero padding is useful for making pretty graphs and finding the peak frequency more accurately,
+but it does NOT replace the need for a longer time buffer if you need to distinguish close tones.

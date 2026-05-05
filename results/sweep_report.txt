@@ -1,0 +1,31 @@
+====================================================
+   REAL-TIME FFT HARDWARE LIMITATION SWEEP
+====================================================
+
+--- Test A: Resolution vs FFT Size (50Hz vs 55Hz) ---
+     N     Resolution         Status
+----------------------------------------
+    64          15.62 Hz         MERGED
+   128           7.81 Hz         MERGED
+   256           3.91 Hz         MERGED
+   512           1.95 Hz       RESOLVED
+  1024           0.98 Hz       RESOLVED
+
+--- Test B: Dynamic Range (F32 vs Q15) ---
+Strong Signal: 1.0 @ 50Hz, Weak Signal: 0.00 @ 120Hz
+    FormatWeak Peak Found       Weak Mag
+---------------------------------------------
+       F32            YES         1.6970
+       Q15            YES        62.5957
+Note: Q15 internal scaling reduces effective bit depth for weak signals.
+
+--- Test C: ADC Bit-Depth Emulation (1024 pt, Hann) ---
+      Bits    Noise Floor
+------------------------------
+         8       0.006150
+        10       0.002024
+        12       0.002024
+        16       0.000809
+        24       0.000735
+
+====================================================
