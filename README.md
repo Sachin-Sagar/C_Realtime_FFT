@@ -7,6 +7,7 @@ This project provides a portable, pure C implementation of the Fast Fourier Tran
 - **Arithmetic:** Floating-Point (Single Precision f32) and Fixed-Point (Q15, Q31).
 - **Windowing:** Hann, Hamming, and Blackman windows.
 - **DMA Pipeline:** High-performance "out-of-place" processing specifically for STM32 DMA buffers, combining conversion, centering, reordering, and FFT in one pass.
+- **ARM Optimization:** Optional wrapper for the ARM CMSIS-DSP library, utilizing SIMD and FPU acceleration on Cortex-M cores.
 - **Optimization:** Pre-computed twiddle factor LUTs initialized at runtime.
 - **Portability:** Dependency-free (standard C library only).
 - **Efficiency:** In-place operations to minimize memory footprint.
@@ -53,6 +54,12 @@ This runs an automated suite that sweeps through different FFT sizes and ADC bit
    #include "fft_pipeline.h"
    // Convert, Center, Shuffle, and Compute in one call
    fft_pipeline_process_f32(adc_dma_buffer, fft_complex_buffer, 1024, 2048.0f);
+   ```
+5. **ARM CMSIS-DSP (Highest Performance):** If using an ARM Cortex-M processor, you can use the CMSIS-DSP wrapper:
+   ```c
+   #include "fft_cmsis.h"
+   // Requires linking the ARM CMSIS-DSP library and defining USE_CMSIS_DSP
+   fft_cmsis_f32(data, 1024, 0); 
    ```
 
 # C_Realtime_FFT
