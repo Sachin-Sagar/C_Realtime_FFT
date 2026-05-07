@@ -4,7 +4,7 @@ CFLAGS = -Iinclude -Wall -Wextra -O2
 CXXFLAGS = -Iinclude -Wall -Wextra -O2 -std=c++17
 LDFLAGS = -lm
 
-C_SRC = src/fft_f32.c src/fft_q15.c src/fft_q31.c src/fft_twiddle.c src/fft_utils.c src/fft_window.c
+C_SRC = src/fft_f32.c src/fft_q15.c src/fft_q31.c src/fft_twiddle.c src/fft_utils.c src/fft_window.c src/fft_pipeline.c
 C_OBJ = $(C_SRC:.c=.o)
 SIM_SRC = sim/main_sim.cpp
 SIM_OBJ = $(SIM_SRC:.cpp=.o)

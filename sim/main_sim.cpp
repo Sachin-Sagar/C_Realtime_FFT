@@ -114,5 +114,51 @@ int main() {
 
     cout << "Simulation complete. Check 'results/padding_effect.png' for the visualization." << endl;
 
+    /* --- CHAPTER 2: STANDARD SIGNAL ANALYSIS --- */
+    /* Signal: 60Hz Sine + 120Hz Harmonic + Noise */
+    uint32_t n_std = 1024;
+    vector<complex_f32_t> data_std(n_std);
+    vector<float32_t> mag_std(n_std);
+    
+    ofstream timeData("results/time_data.dat");
+    for (uint32_t i = 0; i < n_std; i++) {
+        float t = (float)i / SAMPLING_FREQ;
+        float val = 0.7f * sinf(2.0f * PI * 60.0f * t) + 
+                    0.3f * sinf(2.0f * PI * 120.0f * t) +
+                    0.05f * ((float)rand() / RAND_MAX);
+        
+        data_std[i].real = val;
+        data_std[i].imag = 0.0f;
+        timeData << t << " " << val << endl;
+    }
+    timeData.close();
+
+    // Run FFT
+    fft_f32_radix2(data_std.data(), n_std, 0);
+    fft_f32_magnitude(data_std.data(), mag_std.data(), n_std);
+
+    ofstream freqData("results/freq_data.dat");
+    for (uint32_t i = 0; i < n_std / 2; i++) {
+        float freq = (float)i * SAMPLING_FREQ / n_std;
+        freqData << freq << " " << mag_std[i] << endl;
+    }
+    freqData.close();
+
+    cout << "Generating Time Domain Plot (results/time_domain.png)..." << endl;
+    run_gnuplot("set terminal pngcairo size 800,600; "
+                "set output 'results/time_domain.png'; "
+                "set title 'Time Domain Signal'; "
+                "set xlabel 'Time (s)'; set ylabel 'Amplitude'; "
+                "set grid; "
+                "plot 'results/time_data.dat' with lines lc rgb 'forest-green' title 'Input Signal'");
+
+    cout << "Generating Frequency Domain Plot (results/frequency_domain.png)..." << endl;
+    run_gnuplot("set terminal pngcairo size 800,600; "
+                "set output 'results/frequency_domain.png'; "
+                "set title 'Frequency Domain Spectrum'; "
+                "set xlabel 'Frequency (Hz)'; set ylabel 'Magnitude'; "
+                "set grid; "
+                "plot [0:200] 'results/freq_data.dat' with lines lc rgb 'dark-violet' title 'FFT Spectrum'");
+
     return 0;
 }

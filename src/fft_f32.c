@@ -26,12 +26,9 @@ fft_status_t fft_f32_bit_reversal(complex_f32_t *pData, uint32_t n) {
     return FFT_SUCCESS;
 }
 
-fft_status_t fft_f32_radix2(complex_f32_t *pData, uint32_t n, uint8_t isInverse) {
+fft_status_t fft_f32_radix2_compute(complex_f32_t *pData, uint32_t n, uint8_t isInverse) {
     if (pData == NULL) return FFT_ERROR_NULL_POINTER;
-    
-    /* 1. Bit reversal */
-    fft_f32_bit_reversal(pData, n);
-    
+
     /* 2. Butterfly computation */
     for (uint32_t len = 2; len <= n; len <<= 1) {
         uint32_t step = MAX_FFT_SIZE / len;
@@ -75,4 +72,14 @@ fft_status_t fft_f32_radix2(complex_f32_t *pData, uint32_t n, uint8_t isInverse)
     }
     
     return FFT_SUCCESS;
+}
+
+fft_status_t fft_f32_radix2(complex_f32_t *pData, uint32_t n, uint8_t isInverse) {
+    if (pData == NULL) return FFT_ERROR_NULL_POINTER;
+    
+    /* 1. Bit reversal */
+    fft_f32_bit_reversal(pData, n);
+    
+    /* 2. Butterfly computation */
+    return fft_f32_radix2_compute(pData, n, isInverse);
 }

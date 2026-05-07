@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding the Fast Fourier Transform (FFT)</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f7f6;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2980b9;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #16a085;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: #fdfdfd;
+            color: #2c3e50;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e1e4e8;
+            font-size: 0.9em;
+        }
+        .highlight {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-left: 5px solid #3498db;
+            margin: 20px 0;
+            color: #2c3e50;
+        }
+        .optimization-box {
+            background-color: #f0fff4;
+            padding: 15px;
+            border-left: 5px solid #28a745;
+            margin: 15px 0;
+        }
+        .formula-block {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #ffffff;
+            border: 1px inset #eee;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>The Mathematics of FFT</h1>
+    <p>Theory, Nuances, and Embedded Optimizations</p>
+</header>
+
+<section>
+    <h2>1. The Discrete Fourier Transform (DFT)</h2>
+    <p>The Fourier Transform translates a signal from the time domain (amplitude vs. time) to the frequency domain (amplitude/phase vs. frequency). For a discrete sequence of $N$ samples $x[n]$, the DFT is defined as:</p>
+    
+    <div class="formula-block">
+        \[ X[k] = \sum_{n=0}^{N-1} x[n] \cdot e^{-i \frac{2\pi}{N} kn} \]
+    </div>
+    
+    <p>Where:</p>
+    <ul>
+        <li>$X[k]$ is the $k$-th frequency component.</li>
+        <li>$x[n]$ is the $n$-th time sample.</li>
+        <li>$e^{-i \frac{2\pi}{N} kn}$ represents the complex sinusoids (using Euler's formula: $\cos\theta - i\sin\theta$).</li>
+    </ul>
+    <p>Calculating the DFT directly requires $O(N^2)$ operations, which is computationally expensive for real-time systems.</p>
+</section>
+
+<section>
+    <h2>2. The Fast Fourier Transform (FFT) Optimization</h2>
+    <p>The FFT is an algorithm that computes the DFT in $O(N \log_2 N)$ time. This project implements the <strong>Radix-2 Decimation-In-Time (DIT) Cooley-Tukey</strong> algorithm.</p>
+    
+    <h3>The Divide and Conquer Strategy</h3>
+    <p>The radix-2 algorithm splits a DFT of size $N$ into two DFTs of size $N/2$: one for even-indexed samples and one for odd-indexed samples.</p>
+    <div class="formula-block">
+        \[ X[k] = E[k] + W_N^k O[k] \]
+        \[ X[k + N/2] = E[k] - W_N^k O[k] \]
+    </div>
+    <p>Where $W_N^k = e^{-i \frac{2\pi}{N} k}$ are the <strong>Twiddle Factors</strong>. This recursive decomposition continues until we reach size-2 DFTs, called <strong>Butterflies</strong>.</p>
+
+    <div class="highlight">
+        <strong>Key Insight:</strong> By reusing the results of $E[k]$ and $O[k]$ for both $X[k]$ and $X[k+N/2]$, we drastically reduce the number of multiplications and additions.
+    </div>
+</section>
+
+<section>
+    <h2>3. Nuances of Signal Processing</h2>
+
+    <h3>Sampling Rate and Nyquist</h3>
+    <p>According to the Nyquist-Shannon sampling theorem, the sampling frequency $f_s$ must be at least twice the highest frequency $f_{max}$ present in the signal ($f_s > 2 f_{max}$).</p>
+    <ul>
+        <li><strong>Frequency Resolution:</strong> $\Delta f = \frac{f_s}{N}$. To see finer frequency details, you must increase $N$ or decrease $f_s$.</li>
+        <li><strong>Folding:</strong> The FFT output is symmetric. For real inputs, we only care about the first $N/2$ bins (from 0 to $f_s/2$).</li>
+    </ul>
+
+    <h3>Windowing</h3>
+    <p>The FFT assumes the input signal is periodic over the window $N$. If the signal doesn't start and end at the same level, a "discontinuity" occurs, leading to <strong>Spectral Leakage</strong>. Windowing functions taper the edges of the buffer to zero to mitigate this.</p>
+    <div class="formula-block">
+        <strong>Hann Window:</strong> \( w[n] = 0.5 \left(1 - \cos\left(\frac{2\pi n}{N-1}\right)\right) \)
+    </div>
+
+    <h3>Padding</h3>
+    <p><strong>Zero-padding</strong> involves appending zeros to the end of the time-domain signal. This serves two purposes:
+        <ol>
+            <li>Extending the buffer to a power of 2 ($2^k$) to satisfy FFT requirements.</li>
+            <li>Interpolating the frequency spectrum (making the plot smoother), though it does not improve the actual physical resolution.</li>
+        </ol>
+    </p>
+
+    <h3>The Time-Shift Property</h3>
+    <p>A common question is: <em>"Does it matter where I put the data in the padded buffer?"</em> (e.g., zeros at the end vs. zeros at the beginning).</p>
+    <p>According to the <strong>Time-Shift Property</strong> of the DFT, a shift in the time domain by $m$ samples corresponds to a linear phase shift in the frequency domain:</p>
+    <div class="formula-block">
+        \[ x[n - m] \longleftrightarrow X[k] \cdot e^{-i \frac{2\pi}{N} km} \]
+    </div>
+
+    <div class="highlight">
+        <strong>The Result:</strong>
+        <ul>
+            <li><strong>Magnitude:</strong> The <em>magnitude</em> (the "strength" of each frequency) remains <strong>exactly the same</strong> regardless of where the data is placed.</li>
+            <li><strong>Phase:</strong> The <em>phase</em> (the timing of each frequency) <strong>rotates</strong> based on the shift $m$.</li>
+        </ul>
+    </div>
+
+    <p><strong>Example:</strong> Imagine an impulse in a 4-point buffer. If the data is <code>[1, 0, 0, 0]</code>, the spectrum is flat. If you shift it to <code>[0, 1, 0, 0]</code>, the magnitude stays flat, but the phase of each bin $k$ is shifted by $\frac{2\pi}{N}k$ radians. In practice, we almost always pad at the <strong>end</strong> to keep the signal start at $t=0$, which keeps the phase calculations straightforward.</p>
+</section>
+
+<section>
+    <h2>4. Embedded C Implementation & Optimizations</h2>
+    <p>Running FFT on a 32-bit microcontroller (like Cortex-M4) requires specific strategies to handle memory and CPU constraints.</p>
+
+    <div class="optimization-box">
+        <h3>A. Fixed-Point Arithmetic (Q15/Q31)</h3>
+        <p>Many microcontrollers lack a Floating Point Unit (FPU). We use <strong>Q-format</strong> (e.g., Q15) where 16-bit integers represent fractions between -1.0 and 1.0. This utilizes fast integer ALUs.</p>
+        <pre><code>// Q15 Multiplication Optimization
+int32_t v_re = ((int32_t)v.real * cos_w - (int32_t)v.imag * sin_w) >> 15;</code></pre>
+    </div>
+
+    <div class="optimization-box">
+        <h3>B. Twiddle Factor LUTs</h3>
+        <p>Calculating <code>sin()</code> and <code>cos()</code> at runtime is extremely slow. We pre-compute these values and store them in <strong>Look-Up Tables (LUTs)</strong> in Flash memory.</p>
+        <pre><code>float32_t cos_w = twiddle_cos_f32[lut_idx];
+float32_t sin_w = twiddle_sin_f32[lut_idx];</code></pre>
+    </div>
+
+    <div class="optimization-box">
+        <h3>C. In-Place Computation</h3>
+        <p>To save RAM, the FFT is performed "in-place." The same array that holds the input eventually holds the output. This is made possible by <strong>Bit-Reversal Permutation</strong> performed at the start of the algorithm.</p>
+    </div>
+
+    <div class="optimization-box">
+        <h3>D. Scaling to Prevent Overflow</h3>
+        <p>In fixed-point FFT, values can grow at each stage of the butterfly. To prevent overflow, we scale the data down by a factor of 2 (<code>>> 1</code>) at every stage.</p>
+        <pre><code>pData[idx_u].real = (q15_t)(( (int32_t)u.real + v_re ) >> 1);</code></pre>
+    </div>
+</section>
+
+<section>
+    <h2>5. Implementation Details in Code</h2>
+    <p>This project implements the FFT from scratch using pure C. Here is how the mathematical concepts are translated into code.</p>
+
+    <h3>Data Structures</h3>
+    <p>Instead of relying on external libraries or <code>complex.h</code> (which might not be well-supported on all embedded compilers), we define our own complex number structures:</p>
+    <pre><code>typedef struct {
+    float32_t real;
+    float32_t imag;
+} complex_f32_t;
+
+typedef struct {
+    q15_t real;
+    q15_t imag;
+} complex_q15_t;</code></pre>
+
+    <h3>Manual Complex Algebra</h3>
+    <p>All complex operations are expanded manually. For the butterfly stage, we multiply a sample $v$ by a twiddle factor $W = \cos \theta + i \sin \theta$:</p>
+    <div class="formula-block">
+        \[ (v_{re} + i v_{im}) \cdot (\cos \theta + i \sin \theta) = (v_{re}\cos\theta - v_{im}\sin\theta) + i(v_{re}\sin\theta + v_{im}\cos\theta) \]
+    </div>
+    <p>In C, this is implemented as:</p>
+    <pre><code>complex_f32_t v_prime;
+v_prime.real = v.real * cos_w - v.imag * sin_w;
+v_prime.imag = v.real * sin_w + v.imag * cos_w;</code></pre>
+
+    <h3>The Necessity of Bit-Reversal</h3>
+    <p>In a Radix-2 Decimation-In-Time (DIT) FFT, the algorithm repeatedly splits the input sequence into even and odd indexed samples. This "shuffling" happens at every level of the recursive decomposition:</p>
+    <ul>
+        <li><strong>Level 1:</strong> Split $[0, 1, 2, 3, 4, 5, 6, 7]$ into Even $[0, 2, 4, 6]$ and Odd $[1, 3, 5, 7]$.</li>
+        <li><strong>Level 2:</strong> Split $[0, 2, 4, 6]$ into $[0, 4]$ and $[2, 6]$.</li>
+        <li><strong>Level 3:</strong> Split $[0, 4]$ into $[0]$ and $[4]$.</li>
+    </ul>
+    <p>By the time we reach the base case (the 2-point butterfly), the samples are in the order: <strong>0, 4, 2, 6, 1, 5, 3, 7</strong>.</p>
+    
+    <div class="highlight">
+        <strong>The Pattern:</strong> If you look at the binary representation of these indices, you'll see they are the <strong>bit-reversed</strong> versions of the original sequence:
+        <ul>
+            <li>Original 1 ($001_2$) $\rightarrow$ Reversed 4 ($100_2$)</li>
+            <li>Original 3 ($011_2$) $\rightarrow$ Reversed 6 ($110_2$)</li>
+        </ul>
+    </div>
+
+    <p><strong>Why do we do this?</strong> By reordering the data <em>before</em> the main loops, we can perform all subsequent butterfly operations <strong>In-Place</strong>. This means we don't need a second large buffer to store intermediate results, which is critical for embedded systems with limited RAM.</p>
+
+    <h3>The Bit-Reversal Algorithm</h3>
+    <p>To perform the FFT in-place, the input data must be reordered. This is done by reversing the bits of each index. For example, in an 8-point FFT, index 1 (001) becomes 4 (100). Our implementation uses an efficient pointer-based swap:</p>
+    <pre><code>uint32_t j = 0;
+for (uint32_t i = 0; i < n; i++) {
+    if (i < j) {
+        complex_f32_t temp = pData[i];
+        pData[i] = pData[j];
+        pData[j] = temp;
+    }
+    uint32_t m = n >> 1;
+    while (m >= 1 && j >= m) {
+        j -= m;
+        m >>= 1;
+    }
+    j += m;
+}</code></pre>
+
+    <h3>Butterfly Loop Structure</h3>
+    <p>The core of the FFT consists of three nested loops:</p>
+    <ol>
+        <li><strong>Stage Loop:</strong> Iterates through $\log_2 N$ stages.</li>
+        <li><strong>Group Loop:</strong> Iterates through the groups of butterflies in each stage.</li>
+        <li><strong>Butterfly Loop:</strong> Performs the actual addition and subtraction.</li>
+    </ol>
+    <pre><code>for (uint32_t len = 2; len <= n; len <<= 1) { // Stage loop
+    uint32_t step = MAX_FFT_SIZE / len;
+    for (uint32_t i = 0; i < n; i += len) {     // Group loop
+        for (uint32_t j = 0; j < len / 2; j++) { // Butterfly loop
+            // ... Math goes here ...
+        }
+    }
+}</code></pre>
+
+    <h3>Iterative vs. Recursive Cooley-Tukey</h3>
+    <p>The Cooley-Tukey algorithm is most naturally described <strong>Recursively</strong> (Top-Down). However, our implementation is <strong>Iterative</strong> (Bottom-Up). Here is why:</p>
+
+    <table>
+        <tr style="background-color: #2c3e50; color: white;">
+            <th style="padding: 10px;">Feature</th>
+            <th style="padding: 10px;">Recursive (Top-Down)</th>
+            <th style="padding: 10px;">Iterative (Bottom-Up)</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Memory</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">Uses $O(\log N)$ stack space for function calls.</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">Uses $O(1)$ stack space. Constant memory.</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>In-Place</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">Difficult. Often requires extra buffers to split even/odd.</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">Naturally in-place thanks to pre-shuffling (Bit-Reversal).</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Overhead</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">High function call overhead.</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">Minimal. Just nested loops.</td>
+        </tr>
+    </table>
+
+    <p><strong>The Strategy Shift:</strong> Recursive FFT starts with the full buffer and "divides" down to the 2-point butterflies. Iterative FFT performs the <strong>Bit-Reversal</strong> first to put the samples where they <em>would</em> have ended up at the bottom of the recursion tree, then "conquers" its way back up to the full size $N$ using the three-loop structure.</p>
+
+    <h3>Computational Complexity & Scaling</h3>
+    <p>The time complexity of this FFT implementation is <strong>$O(N \log_2 N)$</strong>. This is a massive improvement over the Naive DFT, which is $O(N^2)$.</p>
+    
+    <table>
+        <tr style="background-color: #2c3e50; color: white;">
+            <th style="padding: 10px;">FFT Size ($N$)</th>
+            <th style="padding: 10px;">Naive DFT ($N^2$) Ops</th>
+            <th style="padding: 10px;">FFT ($N \log_2 N$) Ops</th>
+            <th style="padding: 10px;">Efficiency Gain</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">64</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">4,096</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">384</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">~10x</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">1024</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">1,048,576</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">10,240</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">~100x</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">4096</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">16,777,216</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">49,152</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">~340x</td>
+        </tr>
+    </table>
+
+    <p><strong>Why $N \log_2 N$?</strong> Looking at our code structure:</p>
+    <ul>
+        <li>The outer <strong>Stage Loop</strong> runs $\log_2 N$ times (once for every power of 2).</li>
+        <li>The inner <strong>Butterfly Loops</strong> combined always process $N$ elements (or $N/2$ pairs) per stage.</li>
+    </ul>
+    <p>This means if you double the buffer size ($2N$), the compute time slightly more than doubles. This "nearly linear" scaling is what makes real-time frequency analysis possible on low-power 32-bit microcontrollers.</p>
+</section>
+
+<section>
+    <h2>6. Numerical Case Study: A Step-by-Step Example</h2>
+    <p>Let's walk through how the algorithm processes a simple signal. Suppose we have 6 samples of a DC signal that suddenly stops. Because our implementation is a <strong>Radix-2</strong> FFT, we must first pad this to the next power of 2 ($N=8$).</p>
+
+    <h3>Step 1: Input, Padding & Conversion</h3>
+    <p>In your <strong>Ping-Pong</strong> setup, this step happens as you copy data from the raw <code>uint16_t</code> DMA buffer to the <code>complex_f32_t</code> FFT buffer.</p>
+    <ul>
+        <li><strong>Raw ADC Samples:</strong> <code>[2048, 2048, 2048, 2048, 2048, 2048]</code> (assuming 12-bit ADC centered at mid-rail).</li>
+        <li><strong>Conversion:</strong> We subtract the DC offset and convert to floats: <code>[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]</code>.</li>
+        <li><strong>Padding:</strong> Since our FFT size $N=8$, we simply fill the remaining 2 slots in our complex array with <code>0.0</code>.</li>
+    </ul>
+    <div class="highlight">
+        <strong>Pro-Tip (Windowing):</strong> In a real implementation, you would multiply these samples by the <strong>Hann Window</strong> coefficients <em>right now</em>, before moving to Step 2. This prevents the "Spectral Leakage" mentioned in Section 3.
+    </div>
+
+    <h3>Step 2: Bit-Reversal (The Shuffle)</h3>
+    <p>The indices are reordered based on their mirrored bit patterns to enable in-place math.</p>
+    <ul>
+        <li>Index 1 ($001_2$) swaps with 4 ($100_2$)</li>
+        <li>Index 3 ($011_2$) swaps with 6 ($110_2$)</li>
+    </ul>
+    <p><strong>Shuffled Data:</strong> <code>[1, 1, 1, 0, 1, 1, 1, 0]</code></p>
+
+    <h3>Step 3: Stage 1 (2-Point Butterflies)</h3>
+    <p>We process adjacent pairs $(A, B) \rightarrow (A+B, A-B)$. Twiddle factor $W^0 = 1$.</p>
+    <ul>
+        <li>(1, 1) $\rightarrow$ 2, 0</li>
+        <li>(1, 0) $\rightarrow$ 1, 1</li>
+        <li>(1, 1) $\rightarrow$ 2, 0</li>
+        <li>(1, 0) $\rightarrow$ 1, 1</li>
+    </ul>
+    <p><strong>Stage 1 Result:</strong> <code>[2, 0, 1, 1, 2, 0, 1, 1]</code></p>
+
+    <h3>Step 4: Stage 2 (4-Point Butterflies)</h3>
+    <p>We process groups of 4. We use $W_4^0 = 1$ and $W_4^1 = -i$.</p>
+    <ul>
+        <li>Group 1: $2 + (1 \cdot 1) = 3$; $2 - (1 \cdot 1) = 1$; $0 + (1 \cdot -i) = -i$; $0 - (1 \cdot -i) = i$</li>
+    </ul>
+    <p><strong>Stage 2 Result:</strong> <code>[3, -i, 1, i, 3, -i, 1, i]</code></p>
+
+    <h3>Step 5: Stage 3 (8-Point Butterflies)</h3>
+    <p>Final stage combining the two halves using twiddle factors from the LUT ($W_8^0 \dots W_8^3$):</p>
+    <ul>
+        <li>$Bin_0 = 3 + (3 \cdot 1) = \mathbf{6.0}$ (The DC component)</li>
+        <li>$Bin_1 = -i + (-i \cdot (0.707 - 0.707i)) = \mathbf{-0.707 - 1.707i}$</li>
+        <li>$Bin_2 = 1 + (1 \cdot -i) = \mathbf{1 - i}$</li>
+        <li>$Bin_3 = i + (i \cdot (-0.707 - 0.707i)) = \mathbf{0.707 + 0.293i}$</li>
+    </ul>
+    <p>The remaining bins (4-7) are the complex conjugates of Bins 1-3. This complete process shows how time-domain data is transformed into its frequency components through simple additions and multiplications.</p>
+</section>
+
+<section>
+    <h2>7. FFT in Real-Time DMA Pipelines</h2>
+    <p>In many embedded systems, an ADC populates a buffer via <strong>DMA (Direct Memory Access)</strong>. Modifying this buffer "in-place" can be risky if the DMA is still active or if you need the raw time-domain data for other tasks (like logging or triggering). Here are the two best ways to bypass in-place computation:</p>
+
+    <div class="optimization-box">
+        <h3>Option 1: The "Copy-and-Reorder" Pipeline</h3>
+        <p>The most efficient way to get data out of a DMA buffer into a separate FFT array is to combine the copy, conversion, and bit-reversal into a single pass. This avoids traversing the large data array multiple times.</p>
+        
+        <p>This project provides <code>fft_pipeline_process_f32()</code> which implements this exact optimization:</p>
+        <pre><code>// Pure C implementation of the "Direct from DMA" pipeline
+fft_status_t fft_pipeline_process_f32(const uint16_t *pSrc, complex_f32_t *pDst, uint32_t n, float32_t offset) {
+    uint32_t j = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        pDst[j].real = (float32_t)pSrc[i] - offset; // Convert & Center
+        pDst[j].imag = 0.0f;                       // Initialize Imag
+
+        // Iterative bit-reversal calculation for next j
+        // ... (see src/fft_pipeline.c for full details) ...
+    }
+    // Run the FFT math on the already-shuffled pDst
+    return fft_f32_radix2_compute(pDst, n, 0);
+}</code></pre>
+        <p><strong>Benefit:</strong> You get the conversion and reordering for the same price as a <code>memcpy</code>. After this, you run the FFT math directly on <code>pDst</code>.</p>
+    </div>
+
+    <div class="optimization-box">
+        <h3>Option 2: Ping-Pong (Double) Buffering</h3>
+        <p>This is the industry standard for continuous signals. You allocate a large <strong>Circular Buffer</strong> that is exactly twice the size of your FFT ($2N$). The DMA hardware is configured to fill this buffer continuously.</p>
+        
+        <p><strong>The Logic:</strong></p>
+        <ol>
+            <li>When the <strong>first half</strong> ($0 \dots N-1$) is full, the DMA triggers a <em>Half-Transfer (HT)</em> interrupt.</li>
+            <li>The CPU starts the FFT on the first half. Meanwhile, the DMA continues filling the <strong>second half</strong> ($N \dots 2N-1$) in the background.</li>
+            <li>When the second half is full, the DMA triggers a <em>Transfer-Complete (TC)</em> interrupt.</li>
+            <li>The CPU starts the FFT on the second half, while the DMA loops back to start filling the first half again.</li>
+        </ol>
+
+        <pre><code>// Example: Real-time processing loop
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
+    // DMA has filled the first half (Ping)
+    process_fft(&dma_buffer[0]); 
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    // DMA has filled the second half (Pong)
+    process_fft(&dma_buffer[N]); 
+}
+
+void process_fft(uint16_t* raw_samples) {
+    // 1. Copy & Convert to complex_f32
+    // 2. Apply Window (e.g., Hann)
+    // 3. Run FFT
+    // 4. Calculate Magnitude
+}</code></pre>
+        <p><strong>Critical Requirement:</strong> The CPU must finish the <code>process_fft</code> call before the DMA fills its current half-buffer. If the FFT takes longer than the time it takes to collect $N$ samples, you will experience "data loss" or "stuttering."</p>
+    </div>
+</section>
+
+<section>
+    <h2>8. Porting to STM32 & Memory Usage</h2>
+    
+    <h3>Data Format</h3>
+    <p>The FFT functions expect an array of <code>complex_f32_t</code> (or <code>complex_q15_t</code>) structures. In memory, this looks like an <strong>interleaved</strong> array: <code>[Real0, Imag0, Real1, Imag1, ...]</code>.</p>
+    <ul>
+        <li><strong>For Time Series:</strong> Put your ADC samples in the <code>real</code> part and set the <code>imag</code> part to <code>0.0f</code>.</li>
+    </ul>
+
+    <h3>Changing Buffer Size</h3>
+    <p>The maximum size is controlled by <code>MAX_FFT_SIZE</code> in <code>include/fft_twiddle.h</code>. To change it:</p>
+    <ol>
+        <li>Update the <code>#define MAX_FFT_SIZE</code> to your desired power of 2 (e.g., 1024).</li>
+        <li>Recompile the code.</li>
+        <li>You can then call the FFT function with any <code>n</code> that is a power of 2 and $\le$ <code>MAX_FFT_SIZE</code>.</li>
+    </ol>
+
+    <h3>RAM & Recursion</h3>
+    <p><strong>Recursion:</strong> This implementation is <strong>Iterative</strong>. It uses nested loops instead of recursive function calls. This is a critical design choice for STM32 to prevent <strong>Stack Overflow</strong>.</p>
+    <p><strong>RAM Usage:</strong> Because it is an <strong>In-Place</strong> algorithm, the RAM requirement is minimal:</p>
+    <ul>
+        <li><strong>Data Array:</strong> $N \times \text{size of complex struct}$ (e.g., for $N=1024$ and <code>f32</code>, this is $1024 \times 8 \text{ bytes} = 8 \text{ KB}$).</li>
+        <li><strong>Twiddle Tables:</strong> These are stored in RAM in this implementation ($N \times \text{size of float} \times 2$), but can be moved to Flash to save more RAM.</li>
+        <li><strong>Stack:</strong> Only a few dozen bytes for local loop variables.</li>
+    </ul>
+</section>
+
+<footer>
+    <p style="text-align: center; color: #7f8c8d;">&copy; 2026 Real-Time FFT Project</p>
+</footer>
+
+</body>
+</html>
